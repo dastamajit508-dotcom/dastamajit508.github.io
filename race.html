@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nabha Telemedicine App</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        /* CSS Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e0f7fa, #b2dfdb); /* Colored background */
+            color: #333;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        nav {
+            background-color: #333;
+            padding: 10px;
+            text-align: center;
+        }
+        nav button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        nav button:hover {
+            background-color: #45a049;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        section {
+            display: none;
+        }
+        section.active {
+            display: block;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        input, select, textarea, button {
+            margin: 10px 0;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #dashboard .stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        #dashboard .stat-card {
+            background-color: #e8f5e9;
+            padding: 20px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #video-call video {
+            width: 100%;
+            max-height: 300px;
+            background-color: #000;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        #chat-messages {
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #fafafa;
+        }
+        #symptom-checker {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        #emergency-alert {
+            background-color: #d32f2f;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .punjabi {
+            font-family: 'Noto Sans Gurmukhi', sans-serif;
+        }
+        /* Icons for visual appeal */
+        .icon::before {
+            content: '📍';
+            margin-right: 5px;
+        }
+        .stat-card::before {
+            content: '📊';
+            font-size: 24px;
+            display: block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Nabha Telemedicine App</h1>
+        <p class="punjabi">ਨਾਭਾ ਟੈਲੀਮੈਡੀਸਨ ਐਪ</p>
+    </header>
+    
+    <nav>
+        <button onclick="showSection('login')">Login / ਲੌਗਇਨ</button>
+        <button onclick="showSection('dashboard')">Dashboard / ਡੈਸ਼ਬੋਰਡ</button>
+        <button onclick="showSection('booking')">Appointment / ਅਪਾਇੰਟਮੈਂਟ</button>
+        <button onclick="showSection('video-call')">Video Call / ਵੀਡੀਓ ਕਾਲ</button>
+        <button onclick="showSection('chat')">Chatbot / ਚੈਟਬੋਟ</button>
+        <button onclick="showSection('symptom-checker')">Symptom Checker / ਲੱਛਣ ਜਾਂਚ</button>
+        <button onclick="showSection('health-records')">Health Records / ਸਿਹਤ ਰਿਕਾਰਡ</button>
+        <button onclick="showSection('pharmacy')">Pharmacy / ਫਾਰਮੇਸੀ</button>
+    </nav>
+    
+    <div class="container">
+        <!-- Login Section -->
+        <section id="login">
+            <h2>Login / ਲੌਗਇਨ</h2>
+            <form onsubmit="login(event)">
+                <input type="text" id="username" placeholder="Username / ਉਪਨਾਮ" required>
+                <input type="password" id="password" placeholder="Password / ਪਾਸਵਰਡ" required>
+                <button type="submit">Login / ਲੌਗਇਨ</button>
+            </form>
+            <p id="login-status"></p>
+        </section>
+        
+        <!-- Dashboard Section -->
+        <section id="dashboard">
+            <h2>Dashboard / ਡੈਸ਼ਬੋਰਡ</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Appointments</h3>
+                    <p id="appointment-count">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Health Records</h3>
+                    <p id="record-count">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Medicines Available</h3>
+                    <p id="pharmacy-status">Checking...</p>
+                </div>
+            </div>
+            <div id="emergency-alert" onclick="sendEmergencyAlert()">Emergency Alert / ਐਮਰਜੈਂਸੀ ਅਲਰਟ</div>
+        </section>
+        
+        <!-- Appointment Booking Section -->
+        <section id="booking">
+            <h2>Book Appointment / ਅਪਾਇੰਟਮੈਂਟ ਬੁੱਕ ਕਰੋ</h2>
+            <form onsubmit="bookAppointment(event)">
+                <input type="text" id="patient-name" placeholder="Patient Name / ਰੋਗੀ ਦਾ ਨਾਮ" required>
+                <select id="doctor" required>
+                    <option value="">Select Doctor / ਡਾਕਟਰ ਚੁਣੋ</option>
+                    <option value="dr-singh">Dr. Singh (General) / ਡਾ. ਸਿੰਘ</option>
+                    <option value="dr-gill">Dr. Gill (Pediatric) / ਡਾ. ਗਿੱਲ</option>
+                </select>
+                <input type="datetime-local" id="appointment-time" required>
+                <textarea id="symptoms" placeholder="Symptoms / ਲੱਛਣ" required></textarea>
+                <button type="submit">Book / ਬੁੱਕ ਕਰੋ</button>
+            </form>
+            <p id="booking-status"></p>
+        </section>
+        
+        <!-- Video Call Section -->
+        <section id="video-call">
+            <h2>Video Call / ਵੀਡੀਓ ਕਾਲ</h2>
+            <input type="text" id="room-id" placeholder="Room ID / ਰੂਮ ID" required>
+            <button onclick="joinRoom()">Join Call / ਕਾਲ ਜੁੜੋ</button>
+            <video id="local-video" autoplay muted></video>
+            <video id="remote-video" autoplay></video>
+            <button onclick="endCall()">End Call / ਕਾਲ ਖਤਮ ਕਰੋ</button>
+        </section>
+        
+        <!-- Chatbot Section -->
+        <section id="chat">
+            <h2>Chatbot / ਚੈਟਬੋਟ</h2>
+            <div id="chat-messages"></div>
+            <input type="text" id="message-input" placeholder="Type message / ਸੁਨੇਹਾ ਲਿਖੋ">
+            <button onclick="sendMessage()">Send / ਭੇਜੋ</button>
+        </section>
+        
+        <!-- Symptom Checker Section -->
+        <section id="symptom-checker">
+            <h2>Symptom Checker / ਲੱਛਣ ਜਾਂਚ</h2>
+            <textarea id="symptom-input" placeholder="Describe symptoms / ਲੱਛਣ ਦੱਸੋ"></textarea>
+            <button onclick="checkSymptoms()">Check / ਜਾਂਚ ਕਰੋ</button>
+            <p id="symptom-result"></p>
+        </section>
+        
+        <!-- Health Records Section -->
+        <section id="health-records">
+            <h2>Health Records / ਸਿਹਤ ਰਿਕਾਰਡ</h2>
+            <div id="records-list"></div>
+            <button onclick="downloadRecords()">Download Records / ਰਿਕਾਰਡ ਡਾਊਨਲੋਡ ਕਰੋ</button>
+        </section>
+        
+        <!-- Pharmacy Updates Section -->
+        <section id="pharmacy">
+            <h2>Pharmacy Updates / ਫਾਰਮੇਸੀ ਅਪਡੇਟ</h2>
+            <div id="pharmacy-list"></div>
+        </section>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        const socket = io(API_URL);
+        let currentUser = null;
+        let peerConnection = null;
+        let records = [];
+        const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+        function showSection(sectionId) {
+            document.querySelectorAll('section').forEach(section => section.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            if (sectionId === 'dashboard') loadDashboard();
+            if (sectionId === 'chat') socket.emit('joinChat');
+            if (sectionId === 'health-records') loadRecords();
+            if (sectionId === 'pharmacy') loadPharmacy();
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                document.getElementById('login-status').innerHTML = data.message;
+                if (data.success) {
+                    currentUser = username;
+                    showSection('dashboard');
+                }
+            } catch (error) {
+                document.getElementById('login-status').innerHTML = 'Error logging in';
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_URL}/appointments`);
+                const appointments = await response.json();
+                document.getElementById('appointment-count').innerText = appointments.length;
+                document.getElementById('record-count').innerText = records.length;
+                const pharmacyResponse = await fetch(`${API_URL}/pharmacy`);
+                const pharmacyData = await pharmacyResponse.json();
+                document.getElementById('pharmacy-status').innerText = pharmacyData.available ? 'Medicines Available' : 'Out of Stock';
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function bookAppointment(event) {
+            event.preventDefault();
+            const name = document.getElementById('patient-name').value;
+            const doctor = document.getElementById('doctor').value;
+            const time = document.getElementById('appointment-time').value;
+            const symptoms = document.getElementById('symptoms').value;
+            try {
+                const response = await fetch(`${API_URL}/appointments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, doctor, time, symptoms, user: currentUser })
+                });
+                const data = await response.json();
+                document.getElementById('booking-status').innerHTML = data.message;
+                if (data.success) {
+                    records.push({ date: new Date().toISOString(), details: `Appointment with ${doctor} at ${time}` });
+                    showSection('dashboard');
+                }
+            } catch (error) {
+                document.getElementById('booking-status').innerHTML = 'Error booking appointment';
+            }
+        }
+
+        async function joinRoom() {
+            const room = document.getElementById('room-id').value;
+            socket.emit('joinRoom', room);
+
+            peerConnection = new RTCPeerConnection(config);
+            const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            document.getElementById('local-video').srcObject = localStream;
+
+            peerConnection.ontrack = (event) => {
+                document.getElementById('remote-video').srcObject = event.streams[0];
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', { room, candidate: event.candidate });
+                }
+            };
+
+            socket.on('offer', async (offer) => {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit('answer', { room, answer });
+            });
+
+            socket.on('answer', async (answer) => {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+            });
+
+            socket.on('ice-candidate', async (candidate) => {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            });
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('offer', { room, offer: peerConnection.localDescription });
+        }
+
+        function endCall() {
+            if (peerConnection) peerConnection.close();
+            document.getElementById('local-video').srcObject = null;
+            document.getElementById('remote-video').srcObject = null;
+        }
+
+        // Chatbot
+        socket.on('loadMessages', (messages) => {
+            updateChat(messages);
+        });
+
+        socket.on('newMessage', (message) => {
+            updateChat([...document.getElementById('chat-messages').__messages || [], message]);
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (text) {
+                const message = { user: currentUser, text };
+                socket.emit('sendMessage', message);
+                input.value = '';
+            }
+        }
+
+        function updateChat(messages) {
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.__messages = messages;
+            chatDiv.innerHTML = messages.map(msg => `<p><strong>${msg.user}:</strong> ${msg.text}</p>`).join('');
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
+        // Symptom Checker (Mock AI)
+        async function checkSymptoms() {
+            const symptoms = document.getElementById('symptom-input').value;
+            try {
+                const response = await fetch(`${API_URL}/symptom-check`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symptoms })
+                });
+                const data = await response.json();
+                document.getElementById('symptom-result').innerHTML = data.result;
+            } catch (error) {
+                document.getElementById('symptom-result').innerHTML = 'Error checking symptoms';
+            }
+        }
+
+        // Health Records (Offline-capable with localStorage)
+        function loadRecords() {
+            const recordsList = document.getElementById('records-list');
+            recordsList.innerHTML = records.map(r => `<p>${r.date}: ${r.details}</p>`).join('');
+            localStorage.setItem('healthRecords', JSON.stringify(records));
+        }
+
+        function downloadRecords() {
+            const data = JSON.stringify(records, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'health_records.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Pharmacy Updates
+        async function loadPharmacy() {
+            try {
+                const response = await fetch(`${API_URL}/pharmacy`);
+                const data = await response.json();
+                document.getElementById('pharmacy-list').innerHTML = data.medicines.map(m => `<p>${m.name}: ${m.available ? 'Available' : 'Out of Stock'}</p>`).join('');
+            } catch (error) {
+                document.getElementById('pharmacy-list').innerHTML = 'Error loading pharmacy data';
+            }
+        }
+
+        // Emergency Alert
+        async function sendEmergencyAlert() {
+            try {
+                await fetch(`${API_URL}/emergency`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: currentUser }) });
+                alert('Emergency alert sent!');
+            } catch (error) {
+                alert('Error sending emergency alert');
+            }
+        }
+
+        // Initial load
+        showSection('login');
+    </script>
+</body>
+</html>
